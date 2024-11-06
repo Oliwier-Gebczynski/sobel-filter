@@ -1,0 +1,2 @@
+LIBRARY sobel-filter-ddl
+EXPORTS MyProc1
