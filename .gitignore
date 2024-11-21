@@ -1,0 +1,7 @@
+
+*.user
+/sobel-ddl/x64/Debug
+/sobel-filter/.vs
+/sobel-filter/bin/x64/Debug
+/sobel-filter/obj/Debug
+/sobel-filter/obj/x64/Debug
