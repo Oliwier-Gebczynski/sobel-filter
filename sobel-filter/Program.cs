@@ -1,23 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
+using System.Windows.Forms;
 
 namespace sobel_filter
 {
-    internal class Program
+    internal static class Program
     {
-        [DllImport(@"C:\Users\oliwi\Documents\GitHub\sobel-filter\sobel-filter\x64\Debug\sobel-dll.dll")]
-        static extern int MyProc1(int a, int b);
-        static void Main(string[] args)
+        [STAThread]
+        static void Main()
         {
-            int x = 5, y = 3;
-            int retVal = MyProc1(x, y);
-            Console.WriteLine(retVal);
-            Console.ReadLine();
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            Application.Run(new sobel_filter.MainForm());
         }
     }
 }
