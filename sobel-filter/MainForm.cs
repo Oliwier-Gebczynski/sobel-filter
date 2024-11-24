@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace sobel_filter
@@ -20,47 +22,24 @@ namespace sobel_filter
             Button btnBrowse = new Button { Text = "Przeglądaj", Left = 560, Top = 18 };
             PictureBox pictureBox = new PictureBox { Left = 150, Top = 60, Width = 400, Height = 300, BorderStyle = BorderStyle.Fixed3D };
 
-            Label lblMode = new Label { Text = "Wybierz tryb:", Left = 20, Top = 380, AutoSize = true };
-            ComboBox cmbMode = new ComboBox
-            {
-                Left = 150,
-                Top = 380,
-                Width = 200,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            cmbMode.Items.AddRange(new string[]
-            {
-        "C++ Debug",
-        "C++ Optimized for Size",
-        "C++ Optimized for Speed",
-        "Asembler"
-            });
+            Button btnProcess = new Button { Text = "Przetwarzaj", Left = 20, Top = 400 };
 
-            Label lblThreshold = new Label { Text = "Podaj wartość T:", Left = 20, Top = 420, AutoSize = true };
-            TextBox txtThreshold = new TextBox { Left = 150, Top = 420, Width = 100 };
-
-            Button btnProcess = new Button { Text = "Rozpocznij przetwarzanie", Left = 20, Top = 460 };
-
-            Label lblResult = new Label { Text = "Wynik:", Left = 20, Top = 500, AutoSize = true };
+            Label lblResult = new Label { Text = "Bitmapa:", Left = 20, Top = 500, AutoSize = true };
             PictureBox pictureBoxResult = new PictureBox { Left = 150, Top = 500, Width = 400, Height = 300, BorderStyle = BorderStyle.Fixed3D };
 
             this.Controls.Add(lblImage);
             this.Controls.Add(txtImagePath);
             this.Controls.Add(btnBrowse);
             this.Controls.Add(pictureBox);
-            this.Controls.Add(lblMode);
-            this.Controls.Add(cmbMode);
-            this.Controls.Add(lblThreshold);
-            this.Controls.Add(txtThreshold);
             this.Controls.Add(btnProcess);
             this.Controls.Add(lblResult);
             this.Controls.Add(pictureBoxResult);
 
-            btnBrowse.Click += (sender, args) => // for tests
+            btnBrowse.Click += (sender, args) => // for test
             {
                 using (OpenFileDialog openFileDialog = new OpenFileDialog())
                 {
-                    openFileDialog.Filter = "Bitmap Files|*.bmp";
+                    openFileDialog.Filter = "Obrazy|*.jpg;*.jpeg;*.png";
                     if (openFileDialog.ShowDialog() == DialogResult.OK)
                     {
                         txtImagePath.Text = openFileDialog.FileName;
@@ -69,25 +48,37 @@ namespace sobel_filter
                 }
             };
 
-            btnProcess.Click += (sender, args) => // for tests
+            btnProcess.Click += (sender, args) => // for test
             {
+                string imagePath = txtImagePath.Text;
+
+                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                {
+                    MessageBox.Show("Wybierz poprawny plik obrazu.", "Błąd");
+                    return;
+                }
+
                 try
                 {
-                    if (!int.TryParse(txtThreshold.Text, out int threshold))
+                    string resultFolder = ImageProcessor.ConvertToBitmap(imagePath);
+
+                    string bitmapFilePath = Path.Combine(resultFolder, "bitmap_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
+                    if (File.Exists(bitmapFilePath))
                     {
-                        MessageBox.Show("Podaj poprawną wartość liczbową dla T.", "Błąd");
-                        return;
+                        pictureBoxResult.Image = new Bitmap(bitmapFilePath);
                     }
 
-                    MessageBox.Show($"Rozpoczęto przetwarzanie z wartością T = {threshold}!", "Przetwarzanie");
+                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}", "Sukces");
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Wystąpił błąd: {ex.Message}", "Błąd");
                 }
             };
-        }
 
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxResult.SizeMode = PictureBoxSizeMode.Zoom;
+        }
 
         [STAThread]
         static void Main()
