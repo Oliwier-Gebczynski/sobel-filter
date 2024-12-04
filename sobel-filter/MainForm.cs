@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -24,18 +25,33 @@ namespace sobel_filter
 
             Button btnProcess = new Button { Text = "Przetwarzaj", Left = 20, Top = 400 };
 
+            Label lblExecutionTime = new Label { Text = "Czas wykonania: ", Left = 20, Top = 450, AutoSize = true };
+
             Label lblResult = new Label { Text = "Bitmapa:", Left = 20, Top = 500, AutoSize = true };
             PictureBox pictureBoxResult = new PictureBox { Left = 150, Top = 500, Width = 400, Height = 300, BorderStyle = BorderStyle.Fixed3D };
+
+            Label lblMode = new Label { Text = "Wybierz tryb:", Left = 20, Top = 370, AutoSize = true };
+            ComboBox comboBoxMode = new ComboBox { Left = 150, Top = 370, Width = 200 };
+            comboBoxMode.Items.AddRange(new string[]
+            {
+                "Debug",
+                "Release optimized for size",
+                "Release optimized for speed"
+            });
+            comboBoxMode.SelectedIndex = 0;
 
             this.Controls.Add(lblImage);
             this.Controls.Add(txtImagePath);
             this.Controls.Add(btnBrowse);
             this.Controls.Add(pictureBox);
             this.Controls.Add(btnProcess);
+            this.Controls.Add(lblExecutionTime);
             this.Controls.Add(lblResult);
             this.Controls.Add(pictureBoxResult);
+            this.Controls.Add(lblMode);
+            this.Controls.Add(comboBoxMode);
 
-            btnBrowse.Click += (sender, args) => // for test
+            btnBrowse.Click += (sender, args) =>
             {
                 using (OpenFileDialog openFileDialog = new OpenFileDialog())
                 {
@@ -48,7 +64,7 @@ namespace sobel_filter
                 }
             };
 
-            btnProcess.Click += (sender, args) => // for test
+            btnProcess.Click += (sender, args) =>
             {
                 string imagePath = txtImagePath.Text;
 
@@ -60,7 +76,13 @@ namespace sobel_filter
 
                 try
                 {
+                    var selectedMode = comboBoxMode.SelectedItem.ToString();
+                    var stopwatch = Stopwatch.StartNew();
+
                     string resultFolder = ImageProcessor.ConvertToBitmap(imagePath);
+
+                    stopwatch.Stop(); 
+                    lblExecutionTime.Text = $"Czas wykonania: {stopwatch.ElapsedMilliseconds} ms";
 
                     string bitmapFilePath = Path.Combine(resultFolder, "bitmap_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
                     if (File.Exists(bitmapFilePath))
@@ -68,7 +90,7 @@ namespace sobel_filter
                         pictureBoxResult.Image = new Bitmap(bitmapFilePath);
                     }
 
-                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}", "Sukces");
+                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}\nWybrany tryb: {selectedMode}", "Sukces");
                 }
                 catch (Exception ex)
                 {
