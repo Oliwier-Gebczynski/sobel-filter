@@ -2,12 +2,16 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace sobel_filter
 {
     public partial class MainForm : Form
     {
+        private ProgressBar progressBar;
+
         public MainForm()
         {
             InitializeComponent();
@@ -26,19 +30,12 @@ namespace sobel_filter
             Button btnProcess = new Button { Text = "Przetwarzaj", Left = 20, Top = 400 };
 
             Label lblExecutionTime = new Label { Text = "Czas wykonania: ", Left = 20, Top = 450, AutoSize = true };
+            progressBar = new ProgressBar { Left = 200, Top = 450, Width = 600, Height = 20 };
 
             Label lblResult = new Label { Text = "Bitmapa:", Left = 20, Top = 500, AutoSize = true };
             PictureBox pictureBoxResult = new PictureBox { Left = 150, Top = 500, Width = 400, Height = 300, BorderStyle = BorderStyle.Fixed3D };
 
-            Label lblMode = new Label { Text = "Wybierz tryb:", Left = 20, Top = 370, AutoSize = true };
-            ComboBox comboBoxMode = new ComboBox { Left = 150, Top = 370, Width = 200 };
-            comboBoxMode.Items.AddRange(new string[]
-            {
-                "Debug",
-                "Release optimized for size",
-                "Release optimized for speed"
-            });
-            comboBoxMode.SelectedIndex = 0;
+            
 
             this.Controls.Add(lblImage);
             this.Controls.Add(txtImagePath);
@@ -48,8 +45,7 @@ namespace sobel_filter
             this.Controls.Add(lblExecutionTime);
             this.Controls.Add(lblResult);
             this.Controls.Add(pictureBoxResult);
-            this.Controls.Add(lblMode);
-            this.Controls.Add(comboBoxMode);
+            this.Controls.Add(progressBar);
 
             btnBrowse.Click += (sender, args) =>
             {
@@ -64,7 +60,7 @@ namespace sobel_filter
                 }
             };
 
-            btnProcess.Click += (sender, args) =>
+            btnProcess.Click += async (sender, args) =>
             {
                 string imagePath = txtImagePath.Text;
 
@@ -76,12 +72,22 @@ namespace sobel_filter
 
                 try
                 {
-                    var selectedMode = comboBoxMode.SelectedItem.ToString();
                     var stopwatch = Stopwatch.StartNew();
+                    progressBar.Value = 0;
+
+                    // Asynchroniczne przetwarzanie obrazu
+                    await Task.Run(() =>
+                    {
+                        for (int i = 0; i <= 100; i++)
+                        {
+                            Thread.Sleep(1); // Symulacja przetwarzania
+                            Invoke(new Action(() => progressBar.Value = i));
+                        }
+                    });
 
                     string resultFolder = ImageProcessor.ConvertToBitmap(imagePath);
 
-                    stopwatch.Stop(); 
+                    stopwatch.Stop();
                     lblExecutionTime.Text = $"Czas wykonania: {stopwatch.ElapsedMilliseconds} ms";
 
                     string bitmapFilePath = Path.Combine(resultFolder, "bitmap_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
@@ -90,11 +96,15 @@ namespace sobel_filter
                         pictureBoxResult.Image = new Bitmap(bitmapFilePath);
                     }
 
-                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}\nWybrany tryb: {selectedMode}", "Sukces");
+                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}", "Sukces");
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Wystąpił błąd: {ex.Message}", "Błąd");
+                }
+                finally
+                {
+                    progressBar.Value = 0; // Resetowanie paska po zakończeniu
                 }
             };
 
