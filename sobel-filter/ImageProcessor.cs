@@ -31,8 +31,34 @@ namespace sobel_filter
 
                 bitmap.Save(bitmapFileName, ImageFormat.Bmp);
 
+                // Convert to grayscale
+                string grayscaleFileName = Path.Combine(outputFolder, "grayscale_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
+                Bitmap grayscaleBitmap = ConvertToGrayscale(bitmap);
+                grayscaleBitmap.Save(grayscaleFileName, ImageFormat.Bmp);
+
                 return outputFolder;
             }
+        }
+
+        private static Bitmap ConvertToGrayscale(Bitmap bitmap)
+        {
+            Bitmap grayscaleBitmap = new Bitmap(bitmap.Width, bitmap.Height);
+
+            for (int y = 0; y < bitmap.Height; y++)
+            {
+                for (int x = 0; x < bitmap.Width; x++)
+                {
+                    Color originalColor = bitmap.GetPixel(x, y);
+
+                    int intensity = (originalColor.R + originalColor.G + originalColor.B) / 3;
+
+                    Color grayscaleColor = Color.FromArgb(intensity, intensity, intensity);
+
+                    grayscaleBitmap.SetPixel(x, y, grayscaleColor);
+                }
+            }
+
+            return grayscaleBitmap;
         }
     }
 }
