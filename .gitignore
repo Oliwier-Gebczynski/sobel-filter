@@ -5,3 +5,5 @@
 /sobel-filter/bin/x64/Debug
 /sobel-filter/obj/Debug
 /sobel-filter/obj/x64/Debug
+/sobel-cpp-dll/x64
+/sobel-filter/x64

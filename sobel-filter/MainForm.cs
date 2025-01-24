@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace sobel_filter
 {
@@ -35,7 +36,7 @@ namespace sobel_filter
             Label lblResult = new Label { Text = "Bitmapa:", Left = 20, Top = 500, AutoSize = true };
             PictureBox pictureBoxResult = new PictureBox { Left = 150, Top = 500, Width = 400, Height = 300, BorderStyle = BorderStyle.Fixed3D };
 
-            
+
 
             this.Controls.Add(lblImage);
             this.Controls.Add(txtImagePath);
@@ -75,28 +76,40 @@ namespace sobel_filter
                     var stopwatch = Stopwatch.StartNew();
                     progressBar.Value = 0;
 
-                    // Asynchroniczne przetwarzanie obrazu
-                    await Task.Run(() =>
+                    // Wczytaj obraz do tablicy bajtów
+                    using (var image = new Bitmap(imagePath))
                     {
-                        for (int i = 0; i <= 100; i++)
+                        var width = image.Width;
+                        var height = image.Height;
+                        var data = image.LockBits(new Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                        try
                         {
-                            Thread.Sleep(1); // Symulacja przetwarzania
-                            Invoke(new Action(() => progressBar.Value = i));
-                        }
-                    });
+                            var stride = data.Stride;
+                            var scan0 = data.Scan0;
+                            var bufferSize = stride * height;
+                            byte[] bytes = new byte[bufferSize];
+                            Marshal.Copy(scan0, bytes, 0, bytes.Length);
 
-                    string resultFolder = ImageProcessor.ConvertToBitmap(imagePath);
+                            // Wywołaj funkcję z DLL
+                            string outputPath = Path.Combine(Path.GetDirectoryName(imagePath), "sobel_result.bmp");
+                            NativeMethods.ApplySobelFilter(bytes, outputPath, width, height);
+
+                            // Pokaż wynik
+                            if (File.Exists(outputPath))
+                            {
+                                pictureBoxResult.Image = new Bitmap(outputPath);
+                            }
+                        }
+                        finally
+                        {
+                            image.UnlockBits(data);
+                        }
+                    }
 
                     stopwatch.Stop();
                     lblExecutionTime.Text = $"Czas wykonania: {stopwatch.ElapsedMilliseconds} ms";
 
-                    string bitmapFilePath = Path.Combine(resultFolder, "bitmap_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
-                    if (File.Exists(bitmapFilePath))
-                    {
-                        pictureBoxResult.Image = new Bitmap(bitmapFilePath);
-                    }
-
-                    MessageBox.Show($"Pliki zostały zapisane w folderze: {resultFolder}", "Sukces");
+                    MessageBox.Show($"Plik wynikowy został zapisany w: {Path.GetDirectoryName(imagePath)}", "Sukces");
                 }
                 catch (Exception ex)
                 {
@@ -118,5 +131,11 @@ namespace sobel_filter
             Application.EnableVisualStyles();
             Application.Run(new MainForm());
         }
+    }
+
+    public class NativeMethods
+    {
+        [DllImport("", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void ApplySobelFilter(byte[] inputImage, string outputPath, int width, int height);
     }
 }
