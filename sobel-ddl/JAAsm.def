@@ -1,2 +1,2 @@
-LIBRARY JAAsm
-EXPORTS MyProc1
+LIBRARY sobel-asm-dll
+EXPORTS AsmSobelFunction

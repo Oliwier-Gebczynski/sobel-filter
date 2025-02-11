@@ -2,14 +2,73 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace sobel_filter
 {
-    public static class ImageProcessor
+    public static class ImageProcessing
     {
-        public static string ConvertToBitmap(string imagePath)
+        public static Bitmap ConvertToGrayscale(string inputPath)
         {
-            string baseFolder = Path.Combine(Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetParent(Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).FullName).FullName).FullName).FullName).FullName, "results");
+            Bitmap colorImage = new Bitmap(inputPath);
+
+            Bitmap grayImage = new Bitmap(colorImage.Width, colorImage.Height);
+
+            for (int y = 0; y < grayImage.Height; y++)
+            {
+                for (int x = 0; x < grayImage.Width; x++)
+                {
+                    Color pixelColor = colorImage.GetPixel(x, y);
+
+                    int grayValue = (int)(0.3 * pixelColor.R + 0.59 * pixelColor.G + 0.11 * pixelColor.B);
+
+                    Color grayColor = Color.FromArgb(grayValue, grayValue, grayValue);
+
+                    grayImage.SetPixel(x, y, grayColor);
+                }
+            }
+            return grayImage;
+        }
+
+        public static byte[] BitmapToByteArray(Bitmap bitmap)
+        {
+            Rectangle rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+            int bytes = Math.Abs(bmpData.Stride) * bitmap.Height;
+            byte[] pixelData = new byte[bytes];
+            Marshal.Copy(bmpData.Scan0, pixelData, 0, bytes);
+            bitmap.UnlockBits(bmpData);
+            return pixelData;
+        }
+
+        public static Bitmap ByteArrayToBitmap(byte[] pixels, int width, int height)
+        {
+            Bitmap bitmap = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
+            ColorPalette palette = bitmap.Palette;
+            for (int i = 0; i < 256; i++)
+                palette.Entries[i] = Color.FromArgb(i, i, i);
+            bitmap.Palette = palette;
+            BitmapData bmpData = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
+            Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
+            bitmap.UnlockBits(bmpData);
+            return bitmap;
+        }
+
+        public static string SaveBitmapToResults(Bitmap bitmap, string imagePath, string prefix)
+        {
+            string baseFolder = Path.Combine(
+                Directory.GetParent(
+                    Directory.GetParent(
+                        Directory.GetParent(
+                            Directory.GetParent(
+                                Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory).FullName
+                            ).FullName
+                        ).FullName
+                    ).FullName
+                ).FullName,
+                "results"
+            );
 
             if (!Directory.Exists(baseFolder))
             {
@@ -20,45 +79,20 @@ namespace sobel_filter
             string outputFolder = Path.Combine(baseFolder, timestamp);
             Directory.CreateDirectory(outputFolder);
 
-            using (Image originalImage = Image.FromFile(imagePath))
-            {
-                string originalFileName = Path.Combine(outputFolder, "original_" + Path.GetFileName(imagePath));
-                string bitmapFileName = Path.Combine(outputFolder, "bitmap_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
+            string originalFileName = Path.GetFileNameWithoutExtension(imagePath);
+            string outputFileName = $"{prefix}{originalFileName}.bmp";
+            string outputPath = Path.Combine(outputFolder, outputFileName);
 
-                originalImage.Save(originalFileName);
+            bitmap.Save(outputPath, ImageFormat.Bmp);
 
-                Bitmap bitmap = new Bitmap(originalImage);
-
-                bitmap.Save(bitmapFileName, ImageFormat.Bmp);
-
-                // Convert to grayscale
-                string grayscaleFileName = Path.Combine(outputFolder, "grayscale_" + Path.GetFileNameWithoutExtension(imagePath) + ".bmp");
-                Bitmap grayscaleBitmap = ConvertToGrayscale(bitmap);
-                grayscaleBitmap.Save(grayscaleFileName, ImageFormat.Bmp);
-
-                return outputFolder;
-            }
+            return outputFolder;
         }
 
-        private static Bitmap ConvertToGrayscale(Bitmap bitmap)
+        public static string SaveBitmapToResults(Bitmap bitmap, string prefix)
         {
-            Bitmap grayscaleBitmap = new Bitmap(bitmap.Width, bitmap.Height);
-
-            for (int y = 0; y < bitmap.Height; y++)
-            {
-                for (int x = 0; x < bitmap.Width; x++)
-                {
-                    Color originalColor = bitmap.GetPixel(x, y);
-
-                    int intensity = (originalColor.R + originalColor.G + originalColor.B) / 3;
-
-                    Color grayscaleColor = Color.FromArgb(intensity, intensity, intensity);
-
-                    grayscaleBitmap.SetPixel(x, y, grayscaleColor);
-                }
-            }
-
-            return grayscaleBitmap;
+            // Używamy domyślnej nazwy "result" jako podstawy do nazewnictwa pliku wynikowego.
+            string defaultFileName = "result";
+            return SaveBitmapToResults(bitmap, defaultFileName, prefix);
         }
     }
 }

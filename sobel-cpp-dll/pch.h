@@ -9,5 +9,11 @@
 
 // w tym miejscu dodaj nagłówki, które mają być wstępnie kompilowane
 #include "framework.h"
+#include <fstream>
+#include <cmath>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <cstring>
 
 #endif //PCH_H

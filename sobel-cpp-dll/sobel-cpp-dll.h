@@ -1,10 +1,9 @@
-#ifndef SOBEL_FILTER_H
-#define SOBEL_FILTER_H
+#pragma once
 
-#include <string>
 
-extern "C" {
-    __declspec(dllexport) void ApplySobelFilter(unsigned char* inputImage, const char* outputPath, int width, int height);
-}
-
-#endif // SOBEL_FILTER_H
+extern "C" __declspec(dllexport) void __cdecl CppSobelFunction(
+    const unsigned char* inputImage,
+    unsigned char* outputImage,
+    int width,
+    int height
+);
