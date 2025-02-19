@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -14,19 +15,16 @@ namespace sobel_filter
 {
     public partial class MainForm : Form
     {
-        [DllImport("", CallingConvention = CallingConvention.Cdecl)]
+        // Import the C++ function from the DLL
+        [DllImport("C:\\Users\\oliwi\\Documents\\GitHub\\sobel-filter\\sobel-filter\\x64\\Debug\\sobel-cpp-dll.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void CppSobelFunction(byte[] inputImage, byte[] outputImage, int width, int height);
 
-        // Modyfikacja: używamy wskaźników byte* (podobnie jak w działającym przykładzie)
-        [DllImport("",
+        // Import the ASM function from the DLL – using byte* pointers (remember to use the unsafe context)
+        [DllImport("C:\\Users\\oliwi\\Documents\\GitHub\\sobel-filter\\sobel-filter\\x64\\Debug\\sobel-asm-dll.dll",
             EntryPoint = "AsmSobelFunction", ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         private static unsafe extern void AsmSobelFunction(byte* inputImage, byte* outputImage, int width, int height);
 
-        public MainForm()
-        {
-            InitializeComponent();
-        }
-
+        // Declaration of controls – both existing and new ones
         private TextBox txtFilePath;
         private Button btnBrowse;
         private GroupBox groupBoxDll;
@@ -34,6 +32,7 @@ namespace sobel_filter
         private RadioButton rbAsm;
         private Button btnStart;
         private PictureBox pictureBoxResult;
+        private PictureBox pictureBoxOriginal;
         private Label lblImage;
         private Label lblTime;
         private GroupBox threadOptions;
@@ -45,39 +44,50 @@ namespace sobel_filter
         private RadioButton thread32;
         private RadioButton thread64;
 
+        public MainForm()
+        {
+            InitializeComponent();
+        }
+
         private void InitializeComponent()
         {
-            this.Text = "Detekcja Krawędzi - Filtr Scharra";
-            this.Size = new Size(1000, 1000);
+            // Main form settings
+            this.Text = "Filtr Sobela";
+            this.ClientSize = new Size(1000, 1000);
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
 
+            int margin = 20;
             int formWidth = this.ClientSize.Width;
             int formHeight = this.ClientSize.Height;
 
-            // TextBox do wyświetlania ścieżki do pliku
+            // --- TOP SECTION – file selection, library selection, thread count selection, START button ---
+
+            // Label "Select file"
+            lblImage = new Label();
+            lblImage.Text = "Wybierz plik"; // "Select file"
+            lblImage.AutoSize = true;
+            lblImage.Location = new Point(margin, margin);
+
+            // TextBox for displaying the file path
             txtFilePath = new TextBox();
             txtFilePath.Size = new Size(600, 25);
-            txtFilePath.Location = new Point(20, 20);
+            txtFilePath.Location = new Point(margin, lblImage.Bottom + 5);
             txtFilePath.ReadOnly = true;
 
-            // Label "Wybierz plik" umieszczony nad TextBoxem
-            lblImage = new Label();
-            lblImage.Text = "Wybierz plik";
-            lblImage.AutoSize = true;
-            lblImage.Location = new Point(20, 0);
-
-            // Przycisk do przeglądania pliku
+            // Button to browse for a file
             btnBrowse = new Button();
-            btnBrowse.Text = "Przeglądaj...";
-            btnBrowse.Size = new Size(90, 25);
-            btnBrowse.Location = new Point(txtFilePath.Right + 10, 20);
+            btnBrowse.Text = "Przeglądaj..."; // "Browse..."
+            btnBrowse.Size = new Size(100, 25);
+            btnBrowse.Location = new Point(txtFilePath.Right + margin, txtFilePath.Top);
             btnBrowse.Click += BtnBrowse_Click;
 
-            // GroupBox do wyboru biblioteki (C++/ASM)
+            // GroupBox for selecting the library (C++/ASM)
             groupBoxDll = new GroupBox();
-            groupBoxDll.Text = "Wybierz bibliotekę";
+            groupBoxDll.Text = "Wybierz bibliotekę"; // "Select library"
             groupBoxDll.Size = new Size(200, 80);
-            groupBoxDll.Location = new Point(20, txtFilePath.Bottom + 20);
+            groupBoxDll.Location = new Point(margin, 100);
 
             rbCpp = new RadioButton();
             rbCpp.Text = "C++";
@@ -86,45 +96,45 @@ namespace sobel_filter
 
             rbAsm = new RadioButton();
             rbAsm.Text = "ASM";
-            rbAsm.Location = new Point(10, 50);
+            rbAsm.Location = new Point(10, 45);
 
             groupBoxDll.Controls.Add(rbCpp);
             groupBoxDll.Controls.Add(rbAsm);
 
-            // GroupBox do wyboru liczby wątków
+            // GroupBox for selecting the number of threads
             threadOptions = new GroupBox();
-            threadOptions.Text = "Wybierz ilość wątków:";
+            threadOptions.Text = "Wybierz ilość wątków:"; // "Select number of threads:"
             threadOptions.Size = new Size(150, 200);
-            threadOptions.Location = new Point(formWidth - threadOptions.Width - 20, 65);
+            threadOptions.Location = new Point(groupBoxDll.Right + margin, 100);
 
             thread1 = new RadioButton();
             thread1.Text = "1";
-            thread1.Location = new Point(10, 15);
+            thread1.Location = new Point(10, 20);
             thread1.Checked = true;
 
             thread2 = new RadioButton();
             thread2.Text = "2";
-            thread2.Location = new Point(10, 40);
+            thread2.Location = new Point(10, 45);
 
             thread4 = new RadioButton();
             thread4.Text = "4";
-            thread4.Location = new Point(10, 65);
+            thread4.Location = new Point(10, 70);
 
             thread8 = new RadioButton();
             thread8.Text = "8";
-            thread8.Location = new Point(10, 90);
+            thread8.Location = new Point(10, 95);
 
             thread16 = new RadioButton();
             thread16.Text = "16";
-            thread16.Location = new Point(10, 115);
+            thread16.Location = new Point(10, 120);
 
             thread32 = new RadioButton();
             thread32.Text = "32";
-            thread32.Location = new Point(10, 140);
+            thread32.Location = new Point(10, 145);
 
             thread64 = new RadioButton();
             thread64.Text = "64";
-            thread64.Location = new Point(10, 165);
+            thread64.Location = new Point(10, 170);
 
             threadOptions.Controls.Add(thread1);
             threadOptions.Controls.Add(thread2);
@@ -134,86 +144,182 @@ namespace sobel_filter
             threadOptions.Controls.Add(thread32);
             threadOptions.Controls.Add(thread64);
 
-            // Przycisk START - umieszczony na środku pod groupBox'em z biblioteką
+            // START button – placed below the group boxes
             btnStart = new Button();
             btnStart.Text = "START";
-            btnStart.Size = new Size(90, 40);
-            btnStart.Location = new Point((formWidth - btnStart.Width) / 2, groupBoxDll.Bottom + 20);
+            btnStart.Size = new Size(100, 40);
+            btnStart.Location = new Point(450, 900);
             btnStart.Click += BtnStart_Click;
 
-            // PictureBox do wyświetlania obrazu wynikowego
+            // --- MIDDLE SECTION – two PictureBoxes ---
+            // Calculate the width of the available area (with margins)
+            int pictureAreaX = margin;
+            int pictureAreaY = groupBoxDll.Bottom + 2 * margin + 100;
+            int pictureAreaWidth = formWidth - 3 * margin;
+            int pictureBoxWidth = pictureAreaWidth / 2;
+            int pictureBoxHeight = pictureAreaWidth / 2; // Reserve 80px for progress bar and possible labels
+
+            // PictureBox for displaying the original image (left side)
+            pictureBoxOriginal = new PictureBox();
+            pictureBoxOriginal.Location = new Point(pictureAreaX, pictureAreaY);
+            pictureBoxOriginal.Size = new Size(pictureBoxWidth, pictureBoxHeight);
+            pictureBoxOriginal.BorderStyle = BorderStyle.FixedSingle;
+            pictureBoxOriginal.SizeMode = PictureBoxSizeMode.StretchImage;
+
+            // PictureBox for displaying the processed image (right side)
             pictureBoxResult = new PictureBox();
-            pictureBoxResult.Size = new Size(650, 650);
-            pictureBoxResult.Location = new Point((formWidth - pictureBoxResult.Width) / 2, btnStart.Bottom + 20);
+            pictureBoxResult.Location = new Point(pictureBoxOriginal.Right + margin, pictureAreaY);
+            pictureBoxResult.Size = new Size(pictureBoxWidth, pictureBoxHeight);
             pictureBoxResult.BorderStyle = BorderStyle.FixedSingle;
             pictureBoxResult.SizeMode = PictureBoxSizeMode.StretchImage;
 
-            // Label do wyświetlania czasu wykonania algorytmu
+            // --- BOTTOM SECTION – label for execution time ---
             lblTime = new Label();
             lblTime.AutoSize = true;
-            lblTime.Location = new Point((formWidth / 2) - 50, formHeight - 40);
+            lblTime.Location = new Point(margin, formHeight - margin - 45);
 
-            // Dodawanie kontrolek do formy
+            // Add all controls to the form
             this.Controls.Add(lblImage);
             this.Controls.Add(txtFilePath);
             this.Controls.Add(btnBrowse);
             this.Controls.Add(groupBoxDll);
             this.Controls.Add(threadOptions);
             this.Controls.Add(btnStart);
+            this.Controls.Add(pictureBoxOriginal);
             this.Controls.Add(pictureBoxResult);
             this.Controls.Add(lblTime);
         }
 
         private void BtnBrowse_Click(object sender, EventArgs e)
         {
+            // Open file dialog to select an image file
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "Image Files|*.jpg;*.png;*bmp";
+                openFileDialog.Filter = "Image Files|*.jpg;*.png;*.bmp";
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     txtFilePath.Text = openFileDialog.FileName;
                     Bitmap image = new Bitmap(txtFilePath.Text);
-                    pictureBoxResult.Image = image;
+                    // Display the original image on the left
+                    pictureBoxOriginal.Image = image;
+                    // Clear the processed image (right side)
+                    pictureBoxResult.Image = null;
                 }
             }
         }
 
-        private void BtnStart_Click(object sender, EventArgs e)
+        private unsafe void BtnStart_Click(object sender, EventArgs e)
         {
             if (!string.IsNullOrEmpty(txtFilePath.Text) && System.IO.File.Exists(txtFilePath.Text))
             {
                 try
                 {
+                    // Convert the image to grayscale
                     Bitmap grayImage = ImageProcessing.ConvertToGrayscale(txtFilePath.Text);
-                    pictureBoxResult.Image = grayImage;
 
                     int width = grayImage.Width;
                     int height = grayImage.Height;
                     int bufferSize = width * height;
 
-                    // Przygotowanie danych wejściowych i bufora wyjściowego
+                    // Prepare input data and output buffer
                     byte[] inputPixels = ImageProcessing.BitmapToByteArray(grayImage);
                     byte[] outputPixels = new byte[bufferSize];
 
                     Stopwatch stopWatch = new Stopwatch();
 
+                    // --- Processing ---
                     if (rbAsm.Checked)
                     {
-                        // Używamy fixed do uzyskania wskaźników z tablic (podobnie jak w działającym przykładzie)
                         unsafe
                         {
-                            fixed (byte* inputPtr = inputPixels)
-                            fixed (byte* outputPtr = outputPixels)
+                            int numThreads = GetSelectedThreadCount();
+                            int innerHeight = height - 2;
+                            if (innerHeight <= 0)
+                                innerHeight = 0;
+                            numThreads = Math.Min(numThreads, Math.Max(innerHeight, 1));
+
+                            if (numThreads == 1)
+                            {
+                                fixed (byte* inputPtr = inputPixels)
+                                fixed (byte* outputPtr = outputPixels)
+                                {
+                                    stopWatch.Start();
+                                    AsmSobelFunction(inputPtr, outputPtr, width, height);
+                                    stopWatch.Stop();
+                                }
+                            }
+                            else
                             {
                                 stopWatch.Start();
-                                AsmSobelFunction(inputPtr, outputPtr, width, height);
+                                fixed (byte* inputPtr = inputPixels)
+                                fixed (byte* outputPtr = outputPixels)
+                                {
+                                    // Store pointer addresses to avoid capturing fixed variables in lambda expressions
+                                    long inputPtrAddress = (long)inputPtr;
+                                    long outputPtrAddress = (long)outputPtr;
+
+                                    // Divide the image into segments – similar to the C++ version
+                                    int chunkSize = innerHeight / numThreads;
+                                    int remainder = innerHeight % numThreads;
+                                    int currentStart = 1;
+                                    var chunks = new List<Tuple<int, int>>();
+
+                                    for (int i = 0; i < numThreads; i++)
+                                    {
+                                        int currentChunkSize = chunkSize + (i < remainder ? 1 : 0);
+                                        int currentEnd = currentStart + currentChunkSize - 1;
+                                        currentEnd = Math.Min(currentEnd, height - 2);
+                                        chunks.Add(Tuple.Create(currentStart, currentEnd));
+                                        currentStart = currentEnd + 1;
+                                    }
+
+                                    Parallel.ForEach(chunks, new ParallelOptions { MaxDegreeOfParallelism = numThreads }, chunk =>
+                                    {
+                                        int outputStartRow = chunk.Item1;
+                                        int outputEndRow = chunk.Item2;
+
+                                        // To apply the filter, we also need the row above and below the segment
+                                        int inputStartRow = Math.Max(0, outputStartRow - 1);
+                                        int inputEndRow = Math.Min(height - 1, outputEndRow + 1);
+                                        int sliceHeight = inputEndRow - inputStartRow + 1;
+                                        if (sliceHeight < 3)
+                                            return;
+
+                                        // Temporary buffer for processing the segment
+                                        byte[] tempOutputSlice = new byte[sliceHeight * width];
+                                        fixed (byte* tempOutputSlicePtr = tempOutputSlice)
+                                        {
+                                            byte* localInputPtr = (byte*)inputPtrAddress;
+                                            byte* localOutputPtr = (byte*)outputPtrAddress;
+                                            byte* inputSlicePtr = localInputPtr + (inputStartRow * width);
+
+                                            // Process the segment
+                                            AsmSobelFunction(inputSlicePtr, tempOutputSlicePtr, width, sliceHeight);
+
+                                            // Copy the processed "valid" rows (skip the first and last rows)
+                                            for (int i = 0; i < sliceHeight - 2; i++)
+                                            {
+                                                int mainRow = outputStartRow + i;
+                                                if (mainRow >= height)
+                                                    break;
+                                                Buffer.MemoryCopy(
+                                                    tempOutputSlicePtr + ((i + 1) * width),
+                                                    localOutputPtr + (mainRow * width),
+                                                    width,
+                                                    width
+                                                );
+                                            }
+                                        }
+                                    });
+                                }
                                 stopWatch.Stop();
                             }
+                            lblTime.Text = $"{stopWatch.Elapsed.TotalMilliseconds:F2} ms";
                         }
-                        lblTime.Text = $"{stopWatch.Elapsed.TotalMilliseconds:F2} ms";
                     }
                     else
                     {
+                        // Processing for the C++ library
                         stopWatch.Start();
                         Array.Clear(outputPixels, 0, outputPixels.Length);
 
@@ -284,6 +390,7 @@ namespace sobel_filter
                         lblTime.Text = $"{stopWatch.Elapsed.TotalMilliseconds:F2} ms";
                     }
 
+                    // Convert the processed byte array to a bitmap and display the result (on the right)
                     Bitmap edgeImage = ImageProcessing.ByteArrayToBitmap(outputPixels, width, height);
                     ImageProcessing.SaveBitmapToResults(edgeImage, "processed_");
                     pictureBoxResult.Image = edgeImage;
@@ -292,12 +399,12 @@ namespace sobel_filter
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Wystąpił błąd podczas przetwarzania obrazu: {ex.Message}", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"Error during image processing: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else
             {
-                MessageBox.Show("Wybierz poprawny plik przed uruchomieniem algorytmu!", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Select a valid file before running the algorithm!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -314,4 +421,3 @@ namespace sobel_filter
         }
     }
 }
-
